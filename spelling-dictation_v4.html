@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spelling Dictation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js"></script>
+<style>
+  :root{
+    --paper:#E7EDEF;
+    --card:#FFFFFF;
+    --ink:#12212E;
+    --ink-soft:#4C5C67;
+    --ink-faint:#8497A0;
+    --line:#D3DCE0;
+    --teal:#0E7C7B;
+    --teal-deep:#0A5B5A;
+    --teal-bright:#33C6AE;
+    --amber:#E0902B;
+    --amber-bright:#F2AC4E;
+    --coral:#C0574A;
+    --stage-1:#0B2029;
+    --stage-2:#123842;
+    --radius:16px;
+    --shadow:0 1px 2px rgba(18,33,46,.06),0 8px 30px rgba(18,33,46,.08);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"Inter",system-ui,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:760px;margin:0 auto;padding:32px 20px 64px}
+
+  /* ---------- header ---------- */
+  header{margin-bottom:26px}
+  .eyebrow{
+    font-family:"Space Mono",monospace;
+    font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--teal);margin:0 0 8px;
+  }
+  h1{
+    font-family:"Bricolage Grotesque",sans-serif;
+    font-weight:800;font-size:clamp(30px,6vw,46px);
+    line-height:1.02;letter-spacing:-.02em;margin:0;
+  }
+  .lede{color:var(--ink-soft);margin:10px 0 0;max-width:52ch}
+
+  /* ---------- cards / panels ---------- */
+  .card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:var(--radius);box-shadow:var(--shadow);
+    padding:22px;margin-top:20px;
+  }
+  .panel[hidden]{display:none}
+
+  /* ---------- input tabs ---------- */
+  .tabs{display:flex;gap:6px;background:var(--paper);padding:5px;border-radius:12px;width:fit-content}
+  .tab{
+    border:0;background:transparent;font:inherit;font-weight:600;font-size:14px;
+    color:var(--ink-soft);padding:8px 16px;border-radius:8px;cursor:pointer;
+  }
+  .tab[aria-selected="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(18,33,46,.12)}
+  .tab:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+  .field-label{font-size:13px;font-weight:600;color:var(--ink-soft);margin:18px 0 8px}
+
+  textarea{
+    width:100%;min-height:170px;resize:vertical;
+    font-family:"Inter",sans-serif;font-size:15px;line-height:1.7;
+    color:var(--ink);background:#FBFCFD;
+    border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+  }
+  textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,124,123,.15)}
+
+  .drop{
+    border:1.5px dashed var(--line);border-radius:12px;background:#FBFCFD;
+    padding:34px 20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;
+  }
+  .drop:hover,.drop.over{border-color:var(--teal);background:#F2F8F8}
+  .drop-icon{font-size:26px}
+  .drop strong{display:block;margin:8px 0 2px;font-weight:600}
+  .drop small{color:var(--ink-faint)}
+  .drop .browse{color:var(--teal);text-decoration:underline}
+
+  .filestatus{font-size:13px;color:var(--ink-soft);margin-top:10px;min-height:18px}
+
+  /* ---------- settings ---------- */
+  .settings{margin-top:22px;border-top:1px solid var(--line);padding-top:20px}
+  .set-row{display:flex;flex-wrap:wrap;gap:22px}
+  .set{flex:1 1 200px;min-width:180px}
+  .set > label{display:block;font-size:13px;font-weight:600;color:var(--ink-soft);margin-bottom:8px}
+  .set .val{font-family:"Space Mono",monospace;color:var(--ink);font-weight:700}
+  input[type=range]{width:100%;accent-color:var(--teal);height:22px}
+  select{
+    width:100%;font:inherit;font-size:14px;color:var(--ink);background:var(--card);
+    border:1px solid var(--line);border-radius:10px;padding:9px 12px;
+  }
+  select:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 3px rgba(14,124,123,.15)}
+
+  .accent-quick{display:flex;gap:6px;margin-top:8px}
+  .chip{
+    border:1px solid var(--line);background:var(--card);font:inherit;font-size:13px;font-weight:600;
+    color:var(--ink-soft);padding:6px 12px;border-radius:999px;cursor:pointer;
+  }
+  .chip[aria-pressed="true"]{background:var(--teal);border-color:var(--teal);color:#fff}
+  .chip:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+  .toggles{display:flex;flex-wrap:wrap;gap:18px;margin-top:22px}
+  .toggle{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer}
+  .toggle input{width:18px;height:18px;accent-color:var(--teal)}
+
+  .startbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:26px;flex-wrap:wrap}
+  .meta{font-size:13px;color:var(--ink-soft)}
+  .meta b{color:var(--ink);font-family:"Space Mono",monospace}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    font:inherit;font-weight:600;font-size:15px;cursor:pointer;border-radius:12px;
+    border:1px solid transparent;padding:13px 22px;transition:transform .05s,filter .15s,background .15s;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+  .btn-primary{background:var(--teal);color:#fff}
+  .btn-primary:hover{background:var(--teal-deep)}
+  .btn-primary:disabled{background:#B7C4C8;cursor:not-allowed}
+  .btn-ghost{background:transparent;border-color:var(--line);color:var(--ink)}
+  .btn-ghost:hover{background:var(--paper)}
+  .btn-warn{background:transparent;border-color:rgba(192,87,74,.4);color:var(--coral)}
+  .btn-warn:hover{background:rgba(192,87,74,.08)}
+
+  .hint{font-size:13px;color:var(--ink-faint);margin-top:14px}
+
+  /* ---------- stage (player) ---------- */
+  .stage{
+    background:radial-gradient(120% 140% at 50% -10%,var(--stage-2),var(--stage-1));
+    border:1px solid #0a1c24;border-radius:22px;
+    padding:34px 24px 30px;text-align:center;color:#EAF3F4;
+    box-shadow:0 20px 60px rgba(8,24,30,.35);margin-top:20px;
+  }
+  .counter{
+    font-family:"Space Mono",monospace;font-size:15px;letter-spacing:.1em;
+    color:#8FB6B6;
+  }
+  .counter b{color:#EAF3F4}
+  .ringwrap{position:relative;width:min(260px,72vw);aspect-ratio:1;margin:16px auto 6px}
+  .ring{width:100%;height:100%;transform:rotate(-90deg)}
+  .ring-track{fill:none;stroke:rgba(255,255,255,.10);stroke-width:9}
+  .ring-progress{fill:none;stroke:var(--teal-bright);stroke-width:9;stroke-linecap:round;transition:stroke .25s}
+  .ring.writing .ring-progress{stroke:var(--amber-bright)}
+  .ringface{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:8px;
+  }
+  .count-num{
+    font-family:"Bricolage Grotesque",sans-serif;font-weight:800;
+    font-size:clamp(52px,16vw,84px);line-height:1;color:#fff;font-variant-numeric:tabular-nums;
+  }
+  .count-num.hidden-word{font-size:clamp(30px,9vw,44px);letter-spacing:.02em}
+  /* equalizer for listening */
+  .eq{display:flex;align-items:flex-end;gap:6px;height:56px}
+  .eq span{width:8px;background:var(--teal-bright);border-radius:4px;height:14px;animation:bounce 1s ease-in-out infinite}
+  .eq span:nth-child(2){animation-delay:.15s}
+  .eq span:nth-child(3){animation-delay:.30s}
+  .eq span:nth-child(4){animation-delay:.45s}
+  .eq span:nth-child(5){animation-delay:.60s}
+  @keyframes bounce{0%,100%{height:14px}50%{height:52px}}
+  .status{
+    font-family:"Space Mono",monospace;text-transform:uppercase;letter-spacing:.16em;
+    font-size:13px;color:#9CC7C7;margin-top:4px;min-height:20px;
+  }
+  .status.write{color:var(--amber-bright)}
+  .peeked-word{
+    font-family:"Bricolage Grotesque",sans-serif;font-weight:600;font-size:22px;color:#fff;
+    margin-top:2px;min-height:30px;word-break:break-word;
+  }
+
+  .progress{height:6px;background:rgba(255,255,255,.12);border-radius:999px;margin:22px 0 20px;overflow:hidden}
+  .progress > i{display:block;height:100%;width:0;background:var(--teal-bright);border-radius:999px;transition:width .3s}
+
+  .controls{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+  .ctl{
+    border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.05);color:#EAF3F4;
+    width:52px;height:52px;border-radius:14px;font-size:19px;cursor:pointer;
+    display:grid;place-items:center;transition:background .15s,border-color .15s;
+  }
+  .ctl:hover{background:rgba(255,255,255,.12)}
+  .ctl:focus-visible{outline:2px solid var(--amber-bright);outline-offset:2px}
+  .ctl.play{width:66px;height:66px;background:var(--amber);border-color:var(--amber);color:#1b1205;font-size:24px}
+  .ctl.play:hover{background:var(--amber-bright)}
+  .ctl-label{font-size:11px}
+  .stage-actions{display:flex;justify-content:center;gap:14px;margin-top:20px}
+  .stage-actions .btn{padding:10px 18px;font-size:14px}
+  .peekbtn{
+    background:transparent;border:1px solid rgba(255,255,255,.2);color:#BEDDDD;
+    font:inherit;font-size:13px;font-weight:600;border-radius:999px;padding:7px 16px;cursor:pointer;
+  }
+  .peekbtn:hover{background:rgba(255,255,255,.08)}
+
+  /* ---------- review ---------- */
+  .review-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .review-head h2{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:24px;margin:0}
+  .review-note{color:var(--ink-soft);margin:6px 0 18px}
+  ol.words{list-style:none;margin:0;padding:0;columns:2;column-gap:26px}
+  ol.words li{
+    break-inside:avoid;display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);
+    align-items:baseline;
+  }
+  ol.words li .n{font-family:"Space Mono",monospace;font-size:12px;color:var(--teal);min-width:26px}
+  ol.words li .w{font-size:15px}
+  .review-actions{display:flex;gap:12px;margin-top:22px;flex-wrap:wrap}
+
+  /* ---------- typed answers (stage) ---------- */
+  .answer{display:flex;gap:10px;justify-content:center;align-items:stretch;margin-top:18px;flex-wrap:wrap}
+  .answer input{
+    font:inherit;font-size:17px;text-align:center;letter-spacing:.03em;color:#fff;
+    background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.25);border-radius:12px;
+    padding:12px 16px;width:min(320px,72vw);
+  }
+  .answer input::placeholder{color:rgba(234,243,244,.45)}
+  .answer input:focus{outline:none;border-color:var(--teal-bright);box-shadow:0 0 0 3px rgba(51,198,174,.25)}
+  .answer .btn{padding:12px 20px}
+  .feedback{margin-top:14px;font-size:15px;color:#CFE3E3}
+  .fb-ok{color:var(--teal-bright);font-weight:700;font-size:20px}
+  .fb-bad{color:#F2A196;font-weight:700}
+  .fb-line{margin-top:6px}
+  .fb-word{font-family:"Space Mono",monospace;font-size:18px;letter-spacing:.06em;word-break:break-word}
+  .fb-empty{color:rgba(234,243,244,.5);font-style:italic}
+  .fb-hint{margin-top:10px;font-size:12px;color:rgba(234,243,244,.45)}
+  mark.miss{background:rgba(192,87,74,.4);color:#FFD3CB;border-radius:3px;padding:0 1px}
+  mark.need{background:rgba(51,198,174,.25);color:#8FF3DF;border-radius:3px;padding:0 1px}
+
+  /* ---------- results report ---------- */
+  .scorebox{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:14px 0 4px}
+  .score-main{display:flex;align-items:baseline;gap:12px}
+  .score-main b{font-family:"Bricolage Grotesque",sans-serif;font-size:34px;font-weight:800}
+  .score-pct{font-family:"Space Mono",monospace;font-size:16px;color:var(--teal);font-weight:700}
+  .score-meta{font-size:13px;color:var(--ink-soft);margin-top:4px}
+  ol.words.results{columns:1}
+  ol.words.results .ic{font-weight:700;min-width:20px}
+  ol.words.results .row-ok .ic{color:var(--teal)}
+  ol.words.results .row-bad .ic{color:var(--coral)}
+  ol.words.results .res-correct{font-weight:600}
+  ol.words.results .res-yours{color:var(--ink-soft);font-size:13px;margin-left:10px}
+  ol.words.results mark.miss{background:rgba(192,87,74,.18);color:var(--coral)}
+  ol.words.results mark.need{background:rgba(14,124,123,.14);color:var(--teal-deep)}
+
+  /* ---------- session history ---------- */
+  .history{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
+  .history h3{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;margin:0 0 10px}
+  .hist-table{width:100%;border-collapse:collapse;font-size:13px}
+  .hist-table th{text-align:left;color:var(--ink-soft);font-weight:600;padding:6px 8px;border-bottom:1px solid var(--line)}
+  .hist-table td{padding:6px 8px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+
+  /* ---------- words to review ---------- */
+  .review-list{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
+  .review-list h3{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;margin:0 0 4px}
+  .review-list-note{font-size:13px;color:var(--ink-soft);margin:0 0 10px}
+  ol.words.review-words{columns:1}
+  ol.words.review-words .w{font-weight:600}
+  .rv-meta{font-size:12px;color:var(--ink-faint);margin-left:auto;white-space:nowrap}
+  .rv-remove{border:0;background:transparent;color:var(--ink-faint);font-size:14px;line-height:1;cursor:pointer;padding:2px 6px;border-radius:6px}
+  .rv-remove:hover{color:var(--coral);background:rgba(192,87,74,.08)}
+  .rv-remove:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  .missbtn{margin-left:auto;border:1px solid var(--line);background:var(--card);font:inherit;font-size:12px;font-weight:600;color:var(--ink-faint);padding:3px 10px;border-radius:999px;cursor:pointer;white-space:nowrap}
+  .missbtn:hover{border-color:var(--coral);color:var(--coral)}
+  .missbtn[aria-pressed="true"]{background:var(--coral);border-color:var(--coral);color:#fff}
+  .missbtn:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+  .msg{font-size:13px;color:var(--coral);margin-top:10px;min-height:18px}
+  footer{margin-top:30px;text-align:center;font-size:12px;color:var(--ink-faint)}
+  a{color:var(--teal)}
+
+  @media (max-width:520px){
+    ol.words{columns:1}
+    .set{flex:1 1 100%}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .eq span{animation:none;height:34px}
+    .ring-progress{transition:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Spelling practice</p>
+    <h1>Spelling Exam Dictation</h1>
+    <p class="lede">Load your word list, then hear each word read aloud — one at a time, at your own pace. Perfect for practising exam listening &amp; spelling: listen, write it on paper, then tap Next for the next word.</p>
+  </header>
+
+  <!-- ============ SETUP ============ -->
+  <section class="card panel" id="setup" aria-label="Set up your word list">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-paste" aria-selected="true" aria-controls="pane-paste">Paste words</button>
+      <button class="tab" role="tab" id="tab-file" aria-selected="false" aria-controls="pane-file">Upload a file</button>
+    </div>
+
+    <div id="pane-paste" role="tabpanel" aria-labelledby="tab-paste">
+      <p class="field-label">One word or phrase per line</p>
+      <textarea id="wordInput" placeholder="jaundice
+cirrhosis
+irritable bowel syndrome
+pneumonia
+osteoporosis"></textarea>
+    </div>
+
+    <div id="pane-file" role="tabpanel" aria-labelledby="tab-file" hidden>
+      <p class="field-label">Upload a .txt, .pdf or Word (.docx) list</p>
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a file to upload">
+        <div class="drop-icon">↥</div>
+        <strong>Drop a file here, or <span class="browse">browse</span></strong>
+        <small>.txt, .pdf or .docx &middot; the words go into an editable box you can tidy</small>
+      </div>
+      <input type="file" id="fileInput" accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+      <p class="filestatus" id="fileStatus"></p>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn btn-ghost" id="tidyBtn" type="button" title="Trim spaces, strip bullets, drop blank lines">Tidy list</button>
+      <button class="btn btn-ghost" id="fixIBtn" type="button" title="Some PDFs export the letter i as an exclamation mark">Fix “!” → “i”</button>
+      <button class="btn btn-ghost" id="clearBtn" type="button">Clear</button>
+    </div>
+
+    <div class="settings">
+      <div class="set-row">
+        <div class="set">
+          <label for="rate">Speaking speed · <span class="val" id="rateVal">0.9×</span></label>
+          <input type="range" id="rate" min="0.5" max="1.3" step="0.05" value="0.9">
+        </div>
+      </div>
+
+      <div class="set-row" style="margin-top:20px">
+        <div class="set">
+          <label for="voice">Voice</label>
+          <select id="voice"></select>
+          <div class="accent-quick">
+            <button class="chip" id="chipUK" type="button" aria-pressed="false">UK 🇬🇧</button>
+            <button class="chip" id="chipUS" type="button" aria-pressed="false">US 🇺🇸</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="set-row" style="margin-top:20px">
+        <div class="set" style="flex:1 1 100%">
+          <label>How will you answer?</label>
+          <div class="accent-quick" role="group" aria-label="Answer mode" style="flex-wrap:wrap">
+            <button class="chip mode-chip" type="button" data-mode="paper" aria-pressed="true">📝 On paper</button>
+            <button class="chip mode-chip" type="button" data-mode="practice" aria-pressed="false">⌨️ Type · instant check</button>
+            <button class="chip mode-chip" type="button" data-mode="exam" aria-pressed="false">🎓 Type · results at the end</button>
+          </div>
+          <p class="hint" id="modeHint" style="margin-top:10px">Listen, then write each word on paper. Press ⏭ Next when you're ready for the next word. The full list is shown at the end.</p>
+        </div>
+      </div>
+
+      <div class="toggles">
+        <label class="toggle"><input type="checkbox" id="twice"> Read each word twice</label>
+        <label class="toggle"><input type="checkbox" id="shuffle"> Shuffle order</label>
+        <label class="toggle"><input type="checkbox" id="hide" checked> Hide the word (test mode)</label>
+      </div>
+    </div>
+
+    <div class="startbar">
+      <p class="meta"><b id="wordCount">0</b> words</p>
+      <button class="btn btn-primary" id="startBtn" disabled>Start dictation</button>
+    </div>
+    <p class="msg" id="setupMsg"></p>
+    <p class="hint">Tip: press <b>Space</b> to pause/resume, <b>R</b> to repeat the current word, and the arrow keys to skip forward or back while it plays.</p>
+  </section>
+
+  <!-- ============ PLAYER ============ -->
+  <section class="stage panel" id="player" hidden aria-label="Dictation in progress" aria-live="polite">
+    <div class="counter">WORD <b id="curNum">01</b> / <span id="totNum">10</span></div>
+
+    <div class="ringwrap">
+      <svg class="ring" id="ring" viewBox="0 0 240 240" aria-hidden="true">
+        <circle class="ring-track" cx="120" cy="120" r="108"></circle>
+        <circle class="ring-progress" id="ringProg" cx="120" cy="120" r="108"></circle>
+      </svg>
+      <div class="ringface">
+        <div class="eq" id="eq" hidden><span></span><span></span><span></span><span></span><span></span></div>
+        <div class="count-num" id="countNum" hidden>5</div>
+      </div>
+    </div>
+
+    <div class="status" id="status">Get ready…</div>
+    <div class="peeked-word" id="peekWord"></div>
+
+    <button class="peekbtn" id="peekBtn" type="button">👁 Show word</button>
+
+    <form class="answer" id="answerForm" hidden autocomplete="off">
+      <input type="text" id="answerInput" placeholder="Type what you hear…" aria-label="Type the word you heard"
+             autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go">
+      <button class="btn btn-primary" id="answerBtn" type="submit">Check</button>
+    </form>
+    <div class="feedback" id="feedback" hidden aria-live="polite"></div>
+
+    <div class="progress"><i id="bar"></i></div>
+
+    <div class="controls">
+      <button class="ctl" id="prevBtn" title="Previous word (←)" aria-label="Previous word">⏮</button>
+      <button class="ctl" id="repeatBtn" title="Repeat word (R)" aria-label="Repeat word">↻</button>
+      <button class="ctl play" id="playPauseBtn" title="Pause / resume (Space)" aria-label="Pause or resume">⏸</button>
+      <button class="ctl" id="nextBtn" title="Next word (→)" aria-label="Next word">⏭</button>
+    </div>
+
+    <div class="stage-actions">
+      <button class="btn btn-warn" id="stopBtn" type="button">Stop &amp; review</button>
+    </div>
+  </section>
+
+  <!-- ============ REVIEW ============ -->
+  <section class="card panel" id="review" hidden aria-label="Review your words">
+    <div class="review-head">
+      <h2 id="reviewTitle">Check your spelling</h2>
+    </div>
+    <div class="scorebox" id="scoreBox" hidden>
+      <div class="score-main"><b id="scoreNum">0 / 0</b><span class="score-pct" id="scorePct">0%</span></div>
+      <div class="score-meta" id="scoreMeta"></div>
+    </div>
+    <p class="review-note" id="reviewNote">Here is the full list. Mark anything you missed, then run it again.</p>
+    <ol class="words" id="wordList"></ol>
+    <div class="review-actions">
+      <button class="btn btn-primary" id="againBtn" type="button">Practise again</button>
+      <button class="btn btn-ghost" id="newListBtn" type="button">New list</button>
+    </div>
+
+    <div class="review-list" id="reviewBox" hidden>
+      <h3>Words to review</h3>
+      <p class="review-list-note">Words you&rsquo;ve spelled wrong before. Spell one right in two sessions in a row and it comes off the list.</p>
+      <ol class="words review-words" id="reviewWords"></ol>
+      <div class="review-actions">
+        <button class="btn btn-primary" id="practiseReviewBtn" type="button">Practise these words</button>
+        <button class="btn btn-ghost" id="clearReviewBtn" type="button">Clear review list</button>
+      </div>
+    </div>
+
+    <div class="history" id="historyBox" hidden>
+      <h3>Past sessions</h3>
+      <table class="hist-table">
+        <thead><tr><th>When</th><th>Mode</th><th>Score</th><th>Accuracy</th></tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+      <button class="btn btn-ghost" id="clearHistBtn" type="button" style="margin-top:12px">Clear history</button>
+    </div>
+  </section>
+
+  <footer>
+    Runs entirely in your browser using its built-in text-to-speech voices. Nothing is uploaded anywhere.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- element refs ----------
+  const $ = id => document.getElementById(id);
+  const setup=$("setup"), player=$("player"), review=$("review");
+  const wordInput=$("wordInput");
+  const tabPaste=$("tab-paste"), tabFile=$("tab-file");
+  const panePaste=$("pane-paste"), paneFile=$("pane-file");
+  const drop=$("drop"), fileInput=$("fileInput"), fileStatus=$("fileStatus");
+  const rate=$("rate"), rateVal=$("rateVal");
+  const voiceSel=$("voice"), chipUK=$("chipUK"), chipUS=$("chipUS");
+  const twiceCb=$("twice"), shuffleCb=$("shuffle"), hideCb=$("hide");
+  const wordCount=$("wordCount"), startBtn=$("startBtn"), setupMsg=$("setupMsg");
+  const curNum=$("curNum"), totNum=$("totNum"), ring=$("ring"), ringProg=$("ringProg");
+  const eq=$("eq"), countNum=$("countNum"), status=$("status"), peekWord=$("peekWord");
+  const peekBtn=$("peekBtn"), bar=$("bar");
+  const prevBtn=$("prevBtn"), repeatBtn=$("repeatBtn"), playPauseBtn=$("playPauseBtn"), nextBtn=$("nextBtn"), stopBtn=$("stopBtn");
+  const wordList=$("wordList"), reviewTitle=$("reviewTitle"), againBtn=$("againBtn"), newListBtn=$("newListBtn");
+  const reviewNote=$("reviewNote"), scoreBox=$("scoreBox"), scoreNum=$("scoreNum"), scorePct=$("scorePct"), scoreMeta=$("scoreMeta");
+  const historyBox=$("historyBox"), historyBody=$("historyBody"), clearHistBtn=$("clearHistBtn");
+  const reviewBox=$("reviewBox"), reviewWords=$("reviewWords"), practiseReviewBtn=$("practiseReviewBtn"), clearReviewBtn=$("clearReviewBtn");
+  const answerForm=$("answerForm"), answerInput=$("answerInput"), answerBtn=$("answerBtn"), feedback=$("feedback");
+  const modeHint=$("modeHint"), modeChips=Array.from(document.querySelectorAll(".mode-chip"));
+
+  // pdf.js worker (best effort — only needed for PDF uploads)
+  try{ if(window.pdfjsLib){ pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; } }catch(e){}
+
+  // ---------- speech setup ----------
+  const synth = window.speechSynthesis;
+  let voices = [];
+  // Edge fires voiceschanged repeatedly (even mid-dictation); remember the chosen
+  // voice by its URI and restore it on every rebuild instead of resetting to default.
+  let userPickedVoice = null;
+  let lastVoiceSig = null;
+  const voiceKey = v => v.voiceURI || (v.name+"|"+v.lang);
+  function loadVoices(){
+    const all = synth ? synth.getVoices() : [];
+    let list = all.filter(v=>/^en/i.test(v.lang));
+    if(!list.length) list = all;
+    const sig = list.map(voiceKey).join("\n");
+    if(sig === lastVoiceSig) return;
+    lastVoiceSig = sig;
+    voices = list;
+    voiceSel.innerHTML="";
+    if(!voices.length){
+      const o=document.createElement("option"); o.textContent="No voices found in this browser"; voiceSel.appendChild(o);
+      voiceSel.disabled=true; return;
+    }
+    voiceSel.disabled=false;
+    voices.forEach((v,i)=>{
+      const o=document.createElement("option");
+      o.value=i; o.textContent=`${v.name} — ${v.lang}${v.default?" (default)":""}`;
+      voiceSel.appendChild(o);
+    });
+    let i = userPickedVoice ? voices.findIndex(v=>voiceKey(v)===userPickedVoice) : -1;
+    // prefer a UK English voice as a sensible default for exam prep
+    if(i<0) i = voices.findIndex(v=>/en-GB/i.test(v.lang));
+    if(i<0) i = 0;
+    voiceSel.value = i;
+    userPickedVoice = voiceKey(voices[i]);
+    updateChips();
+  }
+  if(synth){ loadVoices(); synth.onvoiceschanged = loadVoices; }
+  else { voiceSel.innerHTML="<option>Text-to-speech not supported</option>"; voiceSel.disabled=true;
+         setupMsg.textContent="Your browser doesn't support speech synthesis. Try Chrome, Edge or Safari."; }
+
+  function currentVoice(){ return voices[+voiceSel.value] || null; }
+  function updateChips(){
+    const v=currentVoice();
+    chipUK.setAttribute("aria-pressed", v && /en-GB/i.test(v.lang) ? "true":"false");
+    chipUS.setAttribute("aria-pressed", v && /en-US/i.test(v.lang) ? "true":"false");
+  }
+  chipUK.addEventListener("click",()=>pickAccent(/en-GB/i));
+  chipUS.addEventListener("click",()=>pickAccent(/en-US/i));
+  function pickAccent(re){
+    const i=voices.findIndex(v=>re.test(v.lang));
+    if(i>=0){ voiceSel.value=i; userPickedVoice=voiceKey(voices[i]); } updateChips();
+  }
+  voiceSel.addEventListener("change",()=>{ const v=currentVoice(); if(v) userPickedVoice=voiceKey(v); updateChips(); });
+
+  // ---------- answer mode ----------
+  const modeHints={
+    paper:"Listen, then write each word on paper. Press ⏭ Next when you're ready for the next word. The full list is shown at the end.",
+    practice:"Type each word as you hear it, then press Enter to check it — you'll see straight away if it's right, with any mistake highlighted.",
+    exam:"Type each word as you hear it, then press Enter to save it — everything is checked together at the end, like a real test."
+  };
+  function setAnswerMode(m){
+    answerMode=m;
+    modeChips.forEach(c=>c.setAttribute("aria-pressed", c.dataset.mode===m ? "true":"false"));
+    modeHint.textContent=modeHints[m];
+    const typing = m!=="paper";
+    hideCb.disabled=typing;                       // the word is always hidden when you type the answer
+    hideCb.parentElement.style.opacity = typing ? ".45" : "";
+  }
+  modeChips.forEach(c=>c.addEventListener("click",()=>setAnswerMode(c.dataset.mode)));
+
+  // ---------- word list handling ----------
+  function parseWords(){
+    return wordInput.value.split(/\r?\n/)
+      .map(s=>s.replace(/^[\s•\-\u2022\u25AA*\d.)\]]+\s*/,"").trim())
+      .filter(s=>s.length>0);
+  }
+  function refreshCount(){
+    const n=parseWords().length;
+    wordCount.textContent=n;
+    startBtn.disabled = n===0 || !synth;
+    setupMsg.textContent="";
+  }
+  wordInput.addEventListener("input", refreshCount);
+
+  // tabs
+  function selectTab(which){
+    const paste = which==="paste";
+    tabPaste.setAttribute("aria-selected", paste);
+    tabFile.setAttribute("aria-selected", !paste);
+    panePaste.hidden=!paste; paneFile.hidden=paste;
+  }
+  tabPaste.addEventListener("click",()=>selectTab("paste"));
+  tabFile.addEventListener("click",()=>selectTab("file"));
+
+  // tidy / fix / clear
+  $("tidyBtn").addEventListener("click",()=>{
+    wordInput.value = parseWords().join("\n"); refreshCount();
+  });
+  $("fixIBtn").addEventListener("click",()=>{
+    // replace ! with i when it sits inside/around letters (PDF font quirk)
+    wordInput.value = wordInput.value
+      .replace(/([A-Za-z])!/g,"$1i")
+      .replace(/!([A-Za-z])/g,"i$1");
+    refreshCount();
+  });
+  $("clearBtn").addEventListener("click",()=>{ wordInput.value=""; fileStatus.textContent=""; refreshCount(); });
+
+  // file upload
+  drop.addEventListener("click",()=>fileInput.click());
+  drop.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); fileInput.click(); }});
+  ["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+  drop.addEventListener("drop",e=>{ if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  fileInput.addEventListener("change",()=>{ if(fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+  async function handleFile(file){
+    fileStatus.textContent="Reading “"+file.name+"”…";
+    try{
+      let text="";
+      if(/\.pdf$/i.test(file.name) || file.type==="application/pdf"){
+        if(!window.pdfjsLib) throw new Error("PDF reader not loaded (no internet?). Please paste the words instead.");
+        text = await readPdf(file);
+      } else if(/\.docx$/i.test(file.name) || file.type==="application/vnd.openxmlformats-officedocument.wordprocessingml.document"){
+        if(!window.mammoth) throw new Error("Word reader not loaded (no internet?). Please paste the words instead.");
+        text = await readDocx(file);
+      } else if(/\.doc$/i.test(file.name) || file.type==="application/msword"){
+        throw new Error("old Word .doc files aren't supported. In Word use Save As and pick .docx, or paste the words instead.");
+      } else {
+        text = await readTextFile(file);
+      }
+      wordInput.value = text.trim();
+      const n = parseWords().length;
+      fileStatus.textContent = "Loaded "+n+" line"+(n===1?"":"s")+" from “"+file.name+"”. Check the list on the Paste tab and tidy if needed.";
+      selectTab("paste");
+      refreshCount();
+    }catch(err){
+      fileStatus.textContent = "Couldn't read that file: "+err.message;
+    }
+  }
+  async function readDocx(file){
+    const buf = await file.arrayBuffer();
+    const res = await mammoth.extractRawText({arrayBuffer: buf});
+    return res.value;
+  }
+  async function readTextFile(file){
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    let text;
+    if(bytes[0]===0xFF && bytes[1]===0xFE) text = new TextDecoder("utf-16le").decode(buf);
+    else if(bytes[0]===0xFE && bytes[1]===0xFF) text = new TextDecoder("utf-16be").decode(buf);
+    else text = new TextDecoder().decode(buf);
+    // reject binary files (images etc.) instead of filling the box with garbage
+    const sample = text.slice(0,2000);
+    let weird=0;
+    for(const ch of sample){
+      const c=ch.codePointAt(0);
+      if(c===0 || (c<32 && c!==9 && c!==10 && c!==13) || c===0xFFFD) weird++;
+    }
+    if(sample.length && weird/sample.length>0.05)
+      throw new Error("this doesn't look like a text file. Upload a .txt, .pdf or .docx, or paste the words instead.");
+    return text;
+  }
+  async function readPdf(file){
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+    let out=[];
+    for(let p=1;p<=pdf.numPages;p++){
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      // group items into lines by their y position
+      const lines={};
+      content.items.forEach(it=>{
+        const y=Math.round(it.transform[5]);
+        (lines[y]=lines[y]||[]).push(it.str);
+      });
+      Object.keys(lines).sort((a,b)=>b-a).forEach(y=>{
+        const line=lines[y].join(" ").replace(/\s+/g," ").trim();
+        if(line) out.push(line);
+      });
+    }
+    return out.join("\n");
+  }
+
+  // sliders
+  rate.addEventListener("input",()=>{ rateVal.textContent=(+rate.value).toFixed(2).replace(/0$/,"")+"×"; });
+
+  // ---------- playback engine ----------
+  const C = 2*Math.PI*108;          // ring circumference
+  ringProg.style.strokeDasharray = C;
+
+  let words=[];
+  let idx=0;
+  let state="idle";                 // idle|ready|speaking|writing|feedback|paused|finished
+  let spokenOnce=false;             // for "read twice"
+  let speakTimer=null;              // fallback for onend
+  let peeked=false;
+  let alwaysShow=false;             // paper mode with "hide the word" unticked
+  let answerMode="paper";           // paper|practice|exam
+  let results=[];                   // per word index: {word, answer, ok}
+  let runStart=0;
+  let feedbackTimer=null;
+  let currentUtterance=null;        // held so the browser can't GC it before onend fires
+
+  function setRing(fraction){
+    fraction=Math.max(0,Math.min(1,fraction));
+    ringProg.style.strokeDashoffset = C*(1-fraction);
+  }
+
+  function showListen(){
+    ring.classList.remove("writing");
+    eq.hidden=false; countNum.hidden=true;
+    status.textContent = words.length? "Listen":"" ; status.classList.remove("write");
+    setRing(1);
+  }
+  function showWrite(){
+    ring.classList.add("writing");
+    eq.hidden=true; countNum.hidden=false;
+    countNum.classList.remove("hidden-word");
+    countNum.textContent = "✍️";
+    const typing = answerMode!=="paper";
+    status.textContent = typing ? "Type it, then press Enter" : "Write it down · press ⏭ Next when ready";
+    status.classList.add("write");
+  }
+
+  function updatePeek(){
+    if(peeked){ peekWord.textContent = words[idx]||""; peekBtn.textContent="🙈 Hide word"; }
+    else { peekWord.textContent=""; peekBtn.textContent="👁 Show word"; }
+  }
+  peekBtn.addEventListener("click",()=>{ peeked=!peeked; updatePeek(); });
+
+  function updateHeader(){
+    curNum.textContent=String(idx+1).padStart(2,"0");
+    totNum.textContent=words.length;
+    bar.style.width = (words.length? ((idx)/words.length*100):0)+"%";
+    updatePeek();
+  }
+
+  // detach callbacks from an utterance we're about to cancel, so its onend/onerror
+  // can't fire onSpeechEnd() for a word we've already moved past
+  function dropUtterance(){
+    if(currentUtterance){ currentUtterance.onend=null; currentUtterance.onerror=null; currentUtterance=null; }
+  }
+  function speak(text){
+    if(!synth) return;
+    dropUtterance();
+    const u=new SpeechSynthesisUtterance(text);
+    const v=currentVoice(); if(v){ u.voice=v; u.lang=v.lang; }
+    u.rate=+rate.value; u.pitch=1;
+    u.onend=()=>{ clearTimeout(speakTimer); onSpeechEnd(); };
+    u.onerror=()=>{ clearTimeout(speakTimer); onSpeechEnd(); };
+    currentUtterance=u;
+    const go=()=>{
+      if(currentUtterance!==u) return;   // a newer speak/cancel superseded this one
+      synth.speak(u);
+      // safety fallback in case onend never fires
+      clearTimeout(speakTimer);
+      speakTimer=setTimeout(()=>{ onSpeechEnd(); }, 6000);
+    };
+    // Edge: speaking immediately after cancel() can go silent or fall back to the
+    // default voice, so only cancel when needed and give it a moment to settle
+    if(synth.speaking||synth.pending){ synth.cancel(); setTimeout(go,60); }
+    else go();
+  }
+
+  function onSpeechEnd(){
+    if(state!=="speaking") return;
+    if(twiceCb.checked && !spokenOnce){
+      spokenOnce=true;
+      setTimeout(()=>{ if(state==="speaking") speak(words[idx]); }, 550);
+      return;
+    }
+    startWriteWindow();
+  }
+
+  function playIndex(i, keepInput){
+    if(i<0) i=0;
+    if(i>=words.length){ finish(); return; }
+    clearTimeout(feedbackTimer);
+    idx=i; peeked=alwaysShow; spokenOnce=false;
+    if(!keepInput) answerInput.value="";
+    feedback.hidden=true; feedback.innerHTML="";
+    updateHeader();
+    playPauseBtn.textContent="⏸";
+    state="speaking";
+    showListen();
+    if(answerMode!=="paper"){
+      answerInput.disabled=false;
+      try{ answerInput.focus({preventScroll:true}); }catch(e){ answerInput.focus(); }
+    }
+    speak(words[idx]);
+  }
+
+  // After the word is spoken we simply wait — no timer. The learner advances
+  // manually: ⏭ Next (paper) or Enter / Check to submit their answer (typed modes).
+  function startWriteWindow(){
+    state="writing";
+    setRing(1);
+    showWrite();
+  }
+
+  function pausePlayback(){
+    if(state==="speaking"){ dropUtterance(); synth&&synth.cancel(); clearTimeout(speakTimer); }
+    state="paused";
+    playPauseBtn.textContent="▶";
+    status.textContent="Paused"; status.classList.remove("write");
+    eq.hidden=true;
+  }
+  function resumePlayback(){
+    if(state!=="paused") return;
+    // resume by re-speaking then writing again (simplest, reliable); keep any typed answer
+    playIndex(idx, true);
+  }
+  function togglePause(){
+    if(state==="paused") resumePlayback();
+    else if(state==="speaking") pausePlayback();
+  }
+
+  playPauseBtn.addEventListener("click", togglePause);
+  repeatBtn.addEventListener("click",()=>{ if(state!=="idle"&&state!=="finished"){ playIndex(idx, true); }});
+  nextBtn.addEventListener("click",()=>{ if(state!=="finished"){ playIndex(idx+1); }});
+  prevBtn.addEventListener("click",()=>{ if(state!=="finished"){ playIndex(idx-1); }});
+  stopBtn.addEventListener("click", finish);
+
+  // ---------- typed answers ----------
+  function normalizeAnswer(s){
+    return (s||"").replace(/[’‘]/g,"'").replace(/\s+/g," ").trim().toLowerCase();
+  }
+  // longest-common-subsequence diff; marks characters that differ on each side
+  function charDiff(a,b){
+    const al=a.toLowerCase(), bl=b.toLowerCase();
+    const n=al.length, m=bl.length;
+    const dp=Array.from({length:n+1},()=>new Array(m+1).fill(0));
+    for(let i=1;i<=n;i++)for(let j=1;j<=m;j++)
+      dp[i][j]= al[i-1]===bl[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j],dp[i][j-1]);
+    const aMark=new Array(n).fill(true), bMark=new Array(m).fill(true);
+    let i=n,j=m;
+    while(i>0&&j>0){
+      if(al[i-1]===bl[j-1]){ aMark[i-1]=false; bMark[j-1]=false; i--; j--; }
+      else if(dp[i-1][j]>=dp[i][j-1]) i--;
+      else j--;
+    }
+    return {aMark,bMark};
+  }
+  function renderDiff(str, marks, cls){
+    const frag=document.createDocumentFragment();
+    str.split("").forEach((ch,k)=>{
+      if(marks[k]){ const mk=document.createElement("mark"); mk.className=cls; mk.textContent=ch; frag.appendChild(mk); }
+      else frag.appendChild(document.createTextNode(ch));
+    });
+    return frag;
+  }
+
+  function showFeedback(ok, word, answer){
+    eq.hidden=true; countNum.hidden=true;
+    ring.classList.remove("writing"); setRing(1);
+    status.classList.remove("write");
+    feedback.hidden=false; feedback.innerHTML="";
+    if(ok){
+      status.textContent="Correct";
+      const p=document.createElement("div"); p.className="fb-ok"; p.textContent="✓ "+word;
+      feedback.appendChild(p);
+    } else {
+      status.textContent="Not quite";
+      const d=charDiff(answer, word);
+      const bad=document.createElement("div"); bad.className="fb-bad"; bad.textContent="✗ Check the highlighted letters";
+      const yours=document.createElement("div"); yours.className="fb-line";
+      yours.append("You typed: ");
+      const ya=document.createElement("span"); ya.className="fb-word";
+      if(!answer){ ya.textContent="(no answer)"; ya.classList.add("fb-empty"); }
+      else ya.appendChild(renderDiff(answer, d.aMark, "miss"));
+      yours.appendChild(ya);
+      const corr=document.createElement("div"); corr.className="fb-line";
+      corr.append("Correct: ");
+      const ca=document.createElement("span"); ca.className="fb-word";
+      ca.appendChild(renderDiff(word, d.bMark, "need"));
+      corr.appendChild(ca);
+      feedback.append(bad, yours, corr);
+    }
+    const hint=document.createElement("div"); hint.className="fb-hint"; hint.textContent="Enter → next word";
+    feedback.appendChild(hint);
+  }
+
+  function submitAnswer(){
+    if(answerMode==="paper") return;
+    if(state!=="speaking"&&state!=="writing"&&state!=="paused") return;
+    if(state==="speaking"){ dropUtterance(); synth&&synth.cancel(); clearTimeout(speakTimer); }
+    const word=words[idx];
+    const answer=answerInput.value.trim();
+    const ok = normalizeAnswer(answer)===normalizeAnswer(word);
+    results[idx]={word:word, answer:answer, ok:ok};
+    state="feedback";
+    if(answerMode==="exam"){
+      eq.hidden=true; countNum.hidden=true;
+      ring.classList.remove("writing"); setRing(1);
+      status.textContent="Saved · press Enter or ⏭ Next"; status.classList.remove("write");
+    } else {
+      showFeedback(ok, word, answer);
+    }
+  }
+
+  answerForm.addEventListener("submit",e=>{
+    e.preventDefault();
+    if(state==="feedback"){ clearTimeout(feedbackTimer); playIndex(idx+1); return; }
+    submitAnswer();
+  });
+
+  // ---------- ready countdown then start ----------
+  function beginReady(){
+    state="ready";
+    eq.hidden=true; countNum.hidden=false; countNum.classList.add("hidden-word");
+    ring.classList.remove("writing");
+    let n=3;
+    status.textContent="Get ready…"; status.classList.remove("write");
+    countNum.textContent=n; setRing(1);
+    const iv=setInterval(()=>{
+      n--;
+      if(n<=0){ clearInterval(iv); countNum.classList.remove("hidden-word"); playIndex(0); }
+      else { countNum.textContent=n; setRing(n/3); }
+    },900);
+  }
+
+  function startDictation(){
+    words=parseWords();
+    if(!words.length){ setupMsg.textContent="Add at least one word first."; return; }
+    if(shuffleCb.checked){
+      for(let i=words.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [words[i],words[j]]=[words[j],words[i]]; }
+    }
+    const typing = answerMode!=="paper";
+    alwaysShow = !typing && !hideCb.checked;      // "hide the word" unticked → keep the word on screen
+    peekBtn.style.display = (!typing && hideCb.checked) ? "" : "none";
+    answerForm.hidden = !typing;
+    answerBtn.textContent = answerMode==="exam" ? "Save answer" : "Check";
+    answerInput.value="";
+    feedback.hidden=true; feedback.innerHTML="";
+    results=[]; runStart=Date.now();
+    idx=0; peeked=alwaysShow;
+    setup.hidden=true; review.hidden=true; player.hidden=false;
+    updateHeader();
+    playPauseBtn.textContent="⏸";
+    window.scrollTo({top:0,behavior:"smooth"});
+    beginReady();
+  }
+  startBtn.addEventListener("click", startDictation);
+
+  // ---------- finish / review ----------
+  const HIST_KEY="sd_history";
+  function loadHistory(){
+    try{ const h=JSON.parse(localStorage.getItem(HIST_KEY)||"[]"); return Array.isArray(h)?h:[]; }
+    catch(e){ return []; }
+  }
+  function saveHistory(entry){
+    try{ const h=loadHistory(); h.unshift(entry); localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0,50))); }
+    catch(e){}
+  }
+  function renderHistory(){
+    const h=loadHistory();
+    historyBox.hidden = h.length===0;
+    historyBody.innerHTML="";
+    h.forEach(en=>{
+      const tr=document.createElement("tr");
+      const d=new Date(en.date);
+      [ d.toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})+", "+
+          d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}),
+        en.mode==="exam" ? "Test" : "Practice",
+        en.correct+" / "+en.total,
+        en.accuracy+"%"
+      ].forEach(c=>{ const td=document.createElement("td"); td.textContent=c; tr.appendChild(td); });
+      historyBody.appendChild(tr);
+    });
+  }
+  clearHistBtn.addEventListener("click",()=>{ try{ localStorage.removeItem(HIST_KEY); }catch(e){} renderHistory(); });
+
+  // ---------- words-to-review store ----------
+  // Persistent across sessions: word -> {word, misses, streak, lastMissed}.
+  // A word leaves the list after two consecutive correct typed answers.
+  const REVIEW_KEY="sd_review";
+  function loadReview(){
+    try{ const r=JSON.parse(localStorage.getItem(REVIEW_KEY)||"{}");
+         return r && typeof r==="object" && !Array.isArray(r) ? r : {}; }
+    catch(e){ return {}; }
+  }
+  function saveReview(r){ try{ localStorage.setItem(REVIEW_KEY, JSON.stringify(r)); }catch(e){} }
+
+  function recordMiss(store, word){
+    const key=normalizeAnswer(word);
+    if(!key) return;
+    const en=store[key]||{word:word, misses:0, streak:0, lastMissed:null};
+    en.word=word; en.misses++; en.streak=0; en.lastMissed=new Date().toISOString();
+    store[key]=en;
+  }
+  function recordCorrect(store, word){
+    const en=store[normalizeAnswer(word)];
+    if(!en) return;
+    en.streak++;
+    if(en.streak>=2) delete store[normalizeAnswer(word)];
+  }
+  function updateReviewFromResults(list){
+    const store=loadReview();
+    list.forEach(r=>{ if(r.ok) recordCorrect(store, r.word); else recordMiss(store, r.word); });
+    saveReview(store);
+  }
+  function reviewEntries(){
+    return Object.values(loadReview())
+      .sort((a,b)=> b.misses-a.misses || String(b.lastMissed).localeCompare(String(a.lastMissed)));
+  }
+  function renderReview(){
+    const entries=reviewEntries();
+    reviewBox.hidden = entries.length===0;
+    reviewWords.innerHTML="";
+    entries.forEach(en=>{
+      const li=document.createElement("li");
+      const w=document.createElement("span"); w.className="w"; w.textContent=en.word;
+      const meta=document.createElement("span"); meta.className="rv-meta";
+      let when="";
+      if(en.lastMissed){
+        const d=new Date(en.lastMissed);
+        when=" · last "+d.toLocaleDateString(undefined,{day:"numeric",month:"short"});
+      }
+      meta.textContent="missed ×"+en.misses+when;
+      const rm=document.createElement("button");
+      rm.type="button"; rm.className="rv-remove"; rm.textContent="✕";
+      rm.title="Remove from list";
+      rm.setAttribute("aria-label","Remove “"+en.word+"” from the review list");
+      rm.addEventListener("click",()=>{
+        const store=loadReview(); delete store[normalizeAnswer(en.word)];
+        saveReview(store); renderReview();
+      });
+      li.append(w, meta, rm);
+      reviewWords.appendChild(li);
+    });
+  }
+  practiseReviewBtn.addEventListener("click",()=>{
+    const list=reviewEntries().map(en=>en.word);
+    if(!list.length) return;
+    wordInput.value=list.join("\n");
+    selectTab("paste");
+    review.hidden=true; setup.hidden=false;
+    refreshCount();
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+  clearReviewBtn.addEventListener("click",()=>{ try{ localStorage.removeItem(REVIEW_KEY); }catch(e){} renderReview(); });
+
+  // paper mode: the app can't see the page, so let the user tap the words they missed
+  function makeMissToggle(word){
+    const b=document.createElement("button");
+    b.type="button"; b.className="missbtn";
+    b.setAttribute("aria-pressed","false"); b.textContent="✗ missed?";
+    let prior;                     // snapshot so un-marking restores the entry exactly
+    b.addEventListener("click",()=>{
+      const store=loadReview();
+      const key=normalizeAnswer(word);
+      if(b.getAttribute("aria-pressed")!=="true"){
+        prior = store[key] ? JSON.parse(JSON.stringify(store[key])) : null;
+        recordMiss(store, word);
+        b.setAttribute("aria-pressed","true"); b.textContent="✗ missed";
+      } else {
+        if(prior) store[key]=prior; else delete store[key];
+        b.setAttribute("aria-pressed","false"); b.textContent="✗ missed?";
+      }
+      saveReview(store); renderReview();
+    });
+    return b;
+  }
+
+  function fmtDuration(sec){ return Math.floor(sec/60)+":"+String(sec%60).padStart(2,"0"); }
+
+  function finish(){
+    state="finished";
+    clearTimeout(speakTimer); clearTimeout(feedbackTimer);
+    dropUtterance(); synth&&synth.cancel();
+    player.hidden=true; review.hidden=false;
+    wordList.innerHTML="";
+    wordList.classList.toggle("results", answerMode!=="paper");
+    if(answerMode==="paper"){
+      scoreBox.hidden=true;
+      reviewTitle.textContent = "Check your spelling · "+words.length+" words";
+      reviewNote.textContent = "Here is the full list. Mark anything you missed, then run it again.";
+      words.forEach((w,i)=>{
+        const li=document.createElement("li");
+        li.innerHTML='<span class="n">'+String(i+1).padStart(2,"0")+'</span><span class="w"></span>';
+        li.querySelector(".w").textContent=w;
+        li.appendChild(makeMissToggle(w));
+        wordList.appendChild(li);
+      });
+    } else {
+      const answeredResults=results.filter(Boolean);   // words answered before the run ended
+      const answered=answeredResults.length;
+      words.forEach((w,i)=>{ if(!results[i]) results[i]={word:w, answer:"", ok:false}; });
+      const total=words.length;
+      const correct=results.filter(r=>r.ok).length;
+      const pct=Math.round(correct/total*100);
+      const durationSec=Math.max(0, Math.round((Date.now()-runStart)/1000));
+      const when=new Date();
+      reviewTitle.textContent = answerMode==="exam" ? "Test results" : "Practice results";
+      reviewNote.textContent = correct===total
+        ? "Perfect score — every word right! 🎉"
+        : "Red letters are what you typed; green letters are what the word needed.";
+      scoreBox.hidden=false;
+      scoreNum.textContent=correct+" / "+total;
+      scorePct.textContent=pct+"%";
+      scoreMeta.textContent=(answerMode==="exam"?"Test":"Practice")+" · "
+        + when.toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})+", "
+        + when.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"})
+        + " · took "+fmtDuration(durationSec)
+        + " · "+correct+" correct, "+(total-correct)+" wrong";
+      results.forEach((r,i)=>{
+        const li=document.createElement("li");
+        li.className=r.ok ? "row-ok" : "row-bad";
+        const n=document.createElement("span"); n.className="n"; n.textContent=String(i+1).padStart(2,"0");
+        const ic=document.createElement("span"); ic.className="ic"; ic.textContent=r.ok?"✓":"✗";
+        const body=document.createElement("span"); body.className="w";
+        if(r.ok){ body.textContent=r.word; }
+        else{
+          const d=charDiff(r.answer, r.word);
+          const corr=document.createElement("span"); corr.className="res-correct";
+          corr.appendChild(renderDiff(r.word, d.bMark, "need"));
+          body.appendChild(corr);
+          const yours=document.createElement("span"); yours.className="res-yours";
+          if(!r.answer){ yours.textContent="— no answer"; }
+          else{ yours.append("you typed: "); yours.appendChild(renderDiff(r.answer, d.aMark, "miss")); }
+          body.appendChild(yours);
+        }
+        li.append(n, ic, body);
+        wordList.appendChild(li);
+      });
+      if(answered>0) saveHistory({
+        date: when.toISOString(), mode: answerMode,
+        total: total, correct: correct, wrong: total-correct, accuracy: pct,
+        durationSec: durationSec,
+        words: results.map(r=>({w:r.word, a:r.answer, ok:r.ok}))
+      });
+      updateReviewFromResults(answeredResults);   // unreached words count neither way
+    }
+    renderHistory();
+    renderReview();
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+  againBtn.addEventListener("click",()=>{
+    review.hidden=true; player.hidden=false;
+    idx=0; peeked=alwaysShow; results=[]; runStart=Date.now();
+    answerInput.value=""; feedback.hidden=true; feedback.innerHTML="";
+    playPauseBtn.textContent="⏸"; updateHeader(); beginReady();
+  });
+  newListBtn.addEventListener("click",()=>{ review.hidden=true; setup.hidden=false; window.scrollTo({top:0,behavior:"smooth"}); });
+
+  // ---------- keyboard ----------
+  document.addEventListener("keydown",e=>{
+    if(player.hidden) return;
+    if(e.target.tagName==="TEXTAREA"||e.target.tagName==="SELECT"||e.target.tagName==="INPUT") return;
+    if(e.key===" "){ e.preventDefault(); togglePause(); }
+    else if(e.key.toLowerCase()==="r"){ if(state!=="finished"){ playIndex(idx, true); } }
+    else if(e.key==="ArrowRight"){ if(state!=="finished"){ playIndex(idx+1); } }
+    else if(e.key==="ArrowLeft"){ if(state!=="finished"){ playIndex(idx-1); } }
+  });
+
+  refreshCount();
+})();
+</script>
+</body>
+</html>
