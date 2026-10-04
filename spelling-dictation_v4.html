@@ -458,7 +458,24 @@ osteoporosis"></textarea>
   </footer>
 </div>
 
+<pre id="result">Loading…</pre>
+
 <script>
+
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+  const supabase = createClient(
+    'https://tcntnqsepuaijhekdbcz.supabase.co',
+    'sb_publishable_vxdPNTF9lGeuaXXVxHnKnw_v-_1O1Pp'
+  )
+
+  const { data, error } = await supabase
+    .from('YOUR_TABLE')
+    .select('*')
+    .limit(20)
+
+  document.querySelector('#result').textContent =
+    error ? error.message : JSON.stringify(data, null, 2)
 (function(){
   "use strict";
 
