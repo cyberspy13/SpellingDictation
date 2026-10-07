@@ -9,6 +9,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ---- Cloud sync config (Supabase) ----
+  // These two values are meant to be public; Row-Level Security protects the data.
+  window.SD_SUPABASE_URL = "https://tcntnqsepuaijhekdbcz.supabase.co";
+  window.SD_SUPABASE_KEY = "sb_publishable_vxdPNTF9lGeuaXXVxHnKnw_v-_1O1Pp";
+</script>
 <style>
   :root{
     --paper:#E7EDEF;
@@ -53,6 +60,58 @@
     line-height:1.02;letter-spacing:-.02em;margin:0;
   }
   .lede{color:var(--ink-soft);margin:10px 0 0;max-width:52ch}
+
+  /* ---------- account / cloud sync bar ---------- */
+  .account{
+    display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    box-shadow:var(--shadow);padding:12px 16px;margin-top:18px;
+  }
+  .account .ac-icon{font-size:18px;line-height:1}
+  .account .ac-text{font-size:13.5px;color:var(--ink-soft);flex:1 1 auto;min-width:180px}
+  .account .ac-text b{color:var(--ink);font-weight:600}
+  .account form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0;flex:1 1 260px}
+  .account input[type=email]{
+    flex:1 1 180px;min-width:150px;font:inherit;font-size:14px;color:var(--ink);
+    background:#FBFCFD;border:1px solid var(--line);border-radius:10px;padding:9px 12px;
+  }
+  .account input[type=email]:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+  .account button{
+    border:0;font:inherit;font-weight:600;font-size:14px;cursor:pointer;
+    padding:9px 16px;border-radius:10px;background:var(--teal);color:#fff;white-space:nowrap;
+  }
+  .account button:hover{background:var(--teal-deep)}
+  .account button:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  .account button.ac-ghost{background:transparent;color:var(--teal);padding:9px 10px}
+  .account button.ac-ghost:hover{background:var(--paper)}
+  .account .ac-status{font-family:"Space Mono",monospace;font-size:11px;letter-spacing:.04em;color:var(--ink-faint)}
+  .account .ac-status.ok{color:var(--teal)}
+  .account .ac-status.err{color:var(--coral)}
+  .account[data-state="loading"]{opacity:.7}
+
+  /* ---------- top navigation ---------- */
+  .topnav{
+    display:flex;gap:6px;background:var(--card);border:1px solid var(--line);
+    border-radius:12px;box-shadow:var(--shadow);padding:5px;margin-top:18px;
+    width:fit-content;max-width:100%;
+  }
+  .navtab{
+    border:0;background:transparent;font:inherit;font-weight:600;font-size:14px;
+    color:var(--ink-soft);padding:9px 18px;border-radius:9px;cursor:pointer;
+    display:flex;align-items:center;gap:8px;white-space:nowrap;
+  }
+  .navtab[aria-selected="true"]{background:var(--teal);color:#fff}
+  .navtab:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  .navtab .badge{
+    font-family:"Space Mono",monospace;font-size:11px;line-height:1;
+    background:rgba(18,33,46,.10);padding:3px 7px;border-radius:20px;
+  }
+  .navtab[aria-selected="true"] .badge{background:rgba(255,255,255,.25)}
+  .navtab .badge[hidden]{display:none}
+
+  /* ---------- words retry panel ---------- */
+  #retry .retry-empty{color:var(--ink-soft);margin:2px 0 0}
+  #retry .retry-empty[hidden]{display:none}
 
   /* ---------- cards / panels ---------- */
   .card{
@@ -297,6 +356,26 @@
     <p class="lede">Load your word list, then hear each word read aloud — one at a time, at your own pace. Perfect for practising exam listening &amp; spelling: listen, write it on paper, then tap Next for the next word.</p>
   </header>
 
+  <!-- ============ ACCOUNT / CLOUD SYNC ============ -->
+  <div class="account" id="account" hidden>
+    <span class="ac-icon" aria-hidden="true">☁️</span>
+    <span class="ac-text" id="acText">Sign in to save your words &amp; history to the cloud, so you can pick up on any device.</span>
+    <form id="acForm" autocomplete="on">
+      <input type="email" id="acEmail" name="email" placeholder="you@example.com" aria-label="Email for sign-in" required>
+      <button type="submit" id="acSignIn">Email me a link</button>
+    </form>
+    <button type="button" class="ac-ghost" id="acSignOut" hidden>Sign out</button>
+    <span class="ac-status" id="acStatus" role="status" aria-live="polite"></span>
+  </div>
+
+  <!-- ============ TOP NAV ============ -->
+  <nav class="topnav" role="tablist" aria-label="Views">
+    <button class="navtab" role="tab" id="navPractice" aria-selected="true">Practice</button>
+    <button class="navtab" role="tab" id="navRetry" aria-selected="false">
+      Words Retry <span class="badge" id="retryBadge" hidden>0</span>
+    </button>
+  </nav>
+
   <!-- ============ SETUP ============ -->
   <section class="card panel" id="setup" aria-label="Set up your word list">
     <div class="tabs" role="tablist">
@@ -453,29 +532,24 @@ osteoporosis"></textarea>
     </div>
   </section>
 
+  <!-- ============ WORDS RETRY ============ -->
+  <section class="card panel" id="retry" hidden aria-label="Words to retry">
+    <div class="review-head"><h2>Words Retry</h2></div>
+    <p class="review-note" id="retryNote">Every word you&rsquo;ve spelled wrong, saved to your account. Spell one right in two sessions in a row and it drops off the list.</p>
+    <ol class="words review-words" id="retryWords"></ol>
+    <p class="retry-empty" id="retryEmpty" hidden>No failed words yet — once you miss a word in a typed session, it&rsquo;ll appear here.</p>
+    <div class="review-actions">
+      <button class="btn btn-primary" id="retryPractiseBtn" type="button">Practise all</button>
+      <button class="btn btn-ghost" id="retryClearBtn" type="button">Clear list</button>
+    </div>
+  </section>
+
   <footer>
     Runs entirely in your browser using its built-in text-to-speech voices. Nothing is uploaded anywhere.
   </footer>
 </div>
 
-<pre id="result">Loading…</pre>
-
 <script>
-
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-  const supabase = createClient(
-    'https://tcntnqsepuaijhekdbcz.supabase.co',
-    'sb_publishable_vxdPNTF9lGeuaXXVxHnKnw_v-_1O1Pp'
-  )
-
-  const { data, error } = await supabase
-    .from('YOUR_TABLE')
-    .select('*')
-    .limit(20)
-
-  document.querySelector('#result').textContent =
-    error ? error.message : JSON.stringify(data, null, 2)
 (function(){
   "use strict";
 
@@ -500,6 +574,11 @@ osteoporosis"></textarea>
   const reviewBox=$("reviewBox"), reviewWords=$("reviewWords"), practiseReviewBtn=$("practiseReviewBtn"), clearReviewBtn=$("clearReviewBtn");
   const answerForm=$("answerForm"), answerInput=$("answerInput"), answerBtn=$("answerBtn"), feedback=$("feedback");
   const modeHint=$("modeHint"), modeChips=Array.from(document.querySelectorAll(".mode-chip"));
+  const account=$("account"), acText=$("acText"), acForm=$("acForm"), acEmail=$("acEmail"),
+        acSignIn=$("acSignIn"), acSignOut=$("acSignOut"), acStatus=$("acStatus");
+  const navPractice=$("navPractice"), navRetry=$("navRetry"), retryBadge=$("retryBadge");
+  const retry=$("retry"), retryWords=$("retryWords"), retryEmpty=$("retryEmpty"),
+        retryPractiseBtn=$("retryPractiseBtn"), retryClearBtn=$("retryClearBtn");
 
   // pdf.js worker (best effort — only needed for PDF uploads)
   try{ if(window.pdfjsLib){ pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; } }catch(e){}
@@ -956,6 +1035,7 @@ osteoporosis"></textarea>
   function saveHistory(entry){
     try{ const h=loadHistory(); h.unshift(entry); localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0,50))); }
     catch(e){}
+    cloudPushSession(entry);
   }
   function renderHistory(){
     const h=loadHistory();
@@ -973,7 +1053,7 @@ osteoporosis"></textarea>
       historyBody.appendChild(tr);
     });
   }
-  clearHistBtn.addEventListener("click",()=>{ try{ localStorage.removeItem(HIST_KEY); }catch(e){} renderHistory(); });
+  clearHistBtn.addEventListener("click",()=>{ try{ localStorage.removeItem(HIST_KEY); }catch(e){} cloudClearSessions(); renderHistory(); });
 
   // ---------- words-to-review store ----------
   // Persistent across sessions: word -> {word, misses, streak, lastMissed}.
@@ -984,7 +1064,7 @@ osteoporosis"></textarea>
          return r && typeof r==="object" && !Array.isArray(r) ? r : {}; }
     catch(e){ return {}; }
   }
-  function saveReview(r){ try{ localStorage.setItem(REVIEW_KEY, JSON.stringify(r)); }catch(e){} }
+  function saveReview(r){ try{ localStorage.setItem(REVIEW_KEY, JSON.stringify(r)); }catch(e){} cloudPushReview(r); }
 
   function recordMiss(store, word){
     const key=normalizeAnswer(word);
@@ -1033,6 +1113,38 @@ osteoporosis"></textarea>
       li.append(w, meta, rm);
       reviewWords.appendChild(li);
     });
+    renderRetry();
+  }
+  // Words Retry tab: same data as the review list, always accessible from the top nav.
+  function renderRetry(){
+    const entries=reviewEntries();
+    if(entries.length){ retryBadge.hidden=false; retryBadge.textContent=String(entries.length); }
+    else { retryBadge.hidden=true; }
+    retryEmpty.hidden = entries.length>0;
+    retryPractiseBtn.disabled = entries.length===0;
+    retryPractiseBtn.textContent = entries.length ? ("Practise all "+entries.length) : "Practise all";
+    retryWords.innerHTML="";
+    entries.forEach(en=>{
+      const li=document.createElement("li");
+      const w=document.createElement("span"); w.className="w"; w.textContent=en.word;
+      const meta=document.createElement("span"); meta.className="rv-meta";
+      let when="";
+      if(en.lastMissed){
+        const d=new Date(en.lastMissed);
+        when=" · last "+d.toLocaleDateString(undefined,{day:"numeric",month:"short"});
+      }
+      meta.textContent="missed ×"+en.misses+when;
+      const rm=document.createElement("button");
+      rm.type="button"; rm.className="rv-remove"; rm.textContent="✕";
+      rm.title="Remove from list";
+      rm.setAttribute("aria-label","Remove “"+en.word+"” from the list");
+      rm.addEventListener("click",()=>{
+        const store=loadReview(); delete store[normalizeAnswer(en.word)];
+        saveReview(store); renderReview();
+      });
+      li.append(w, meta, rm);
+      retryWords.appendChild(li);
+    });
   }
   practiseReviewBtn.addEventListener("click",()=>{
     const list=reviewEntries().map(en=>en.word);
@@ -1043,7 +1155,41 @@ osteoporosis"></textarea>
     refreshCount();
     window.scrollTo({top:0,behavior:"smooth"});
   });
-  clearReviewBtn.addEventListener("click",()=>{ try{ localStorage.removeItem(REVIEW_KEY); }catch(e){} renderReview(); });
+  clearReviewBtn.addEventListener("click",()=>{ try{ localStorage.removeItem(REVIEW_KEY); }catch(e){} cloudClearReview(); renderReview(); });
+
+  // ---------- top nav: Practice <-> Words Retry ----------
+  let practiceReturn="setup";
+  function setNav(view){
+    const retryView = view==="retry";
+    navPractice.setAttribute("aria-selected", retryView?"false":"true");
+    navRetry.setAttribute("aria-selected", retryView?"true":"false");
+    if(retryView){
+      practiceReturn = !player.hidden ? "player" : !review.hidden ? "review" : "setup";
+      setup.hidden=true; player.hidden=true; review.hidden=true; retry.hidden=false;
+      renderReview();          // show the local list immediately…
+      cloudRefreshReview();    // …then pull the latest from Supabase if signed in
+    }else{
+      retry.hidden=true;
+      if(practiceReturn==="player") player.hidden=false;
+      else if(practiceReturn==="review") review.hidden=false;
+      else setup.hidden=false;
+    }
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+  navPractice.addEventListener("click",()=>setNav("practice"));
+  navRetry.addEventListener("click",()=>setNav("retry"));
+  retryClearBtn.addEventListener("click",()=>{ try{ localStorage.removeItem(REVIEW_KEY); }catch(e){} cloudClearReview(); renderReview(); });
+  retryPractiseBtn.addEventListener("click",()=>{
+    const list=reviewEntries().map(en=>en.word);
+    if(!list.length) return;
+    wordInput.value=list.join("\n");
+    selectTab("paste");
+    retry.hidden=true; review.hidden=true; setup.hidden=false;
+    practiceReturn="setup";
+    navPractice.setAttribute("aria-selected","true"); navRetry.setAttribute("aria-selected","false");
+    refreshCount();
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
 
   // paper mode: the app can't see the page, so let the user tap the words they missed
   function makeMissToggle(word){
@@ -1158,7 +1304,178 @@ osteoporosis"></textarea>
     else if(e.key==="ArrowLeft"){ if(state!=="finished"){ playIndex(idx-1); } }
   });
 
+  // ================= CLOUD SYNC (Supabase) =================
+  // Local storage stays the source of truth for the UI; when signed in we mirror
+  // the review list + session history to Supabase so any device sees the same data.
+  let sbClient=null, sbUser=null, reviewChain=Promise.resolve();
+  try{
+    if(window.supabase && window.SD_SUPABASE_URL && window.SD_SUPABASE_KEY && location.protocol!=="file:"){
+      sbClient = window.supabase.createClient(window.SD_SUPABASE_URL, window.SD_SUPABASE_KEY);
+    }
+  }catch(e){ sbClient=null; }
+  const cloudReady = ()=> !!(sbClient && sbUser);
+
+  function setSyncText(text,cls){ acStatus.textContent=text||""; acStatus.className="ac-status"+(cls?(" "+cls):""); }
+  function setSync(kind){
+    if(kind==="saving") setSyncText("Saving…","");
+    else if(kind==="ok") setSyncText("Synced ✓","ok");
+    else if(kind==="err") setSyncText("Save failed — will retry","err");
+    else setSyncText("","");
+  }
+  function tstamp(d){ try{ return d ? new Date(d).getTime() : 0; }catch(e){ return 0; } }
+  function mergeReviewEntry(a,b){
+    const at=a.lastMissed||"", bt=b.lastMissed||"";
+    const newer = bt>at ? b : a;
+    return { word:newer.word, misses:Math.max(a.misses||0,b.misses||0),
+             streak:Math.min(a.streak||0,b.streak||0), lastMissed:(bt>at?bt:at)||null };
+  }
+
+  // ----- pushes (called from saveReview / saveHistory / clear buttons) -----
+  function cloudPushReview(store){
+    if(!cloudReady()) return;
+    const uid=sbUser.id;
+    const rows=Object.keys(store||{}).map(k=>({
+      user_id:uid, word_key:k, word:store[k].word,
+      misses:store[k].misses|0, streak:store[k].streak|0,
+      last_missed:store[k].lastMissed||null
+    }));
+    setSync("saving");
+    reviewChain = reviewChain.then(async ()=>{
+      await sbClient.from("review_words").delete().eq("user_id",uid);
+      if(rows.length) await sbClient.from("review_words").insert(rows);
+      setSync("ok");
+    }).catch(()=>setSync("err"));
+  }
+  function cloudPushSession(entry){
+    if(!cloudReady()) return;
+    setSync("saving");
+    sbClient.from("sessions").insert({
+      user_id:sbUser.id, played_at:entry.date, mode:entry.mode,
+      correct:entry.correct, total:entry.total, accuracy:entry.accuracy
+    }).then(({error})=>setSync(error?"err":"ok"), ()=>setSync("err"));
+  }
+  function cloudClearReview(){
+    if(!cloudReady()) return;
+    reviewChain = reviewChain.then(()=> sbClient.from("review_words").delete().eq("user_id",sbUser.id)).catch(()=>{});
+  }
+  function cloudClearSessions(){
+    if(!cloudReady()) return;
+    sbClient.from("sessions").delete().eq("user_id",sbUser.id).then(()=>{},()=>{});
+  }
+
+  // ----- pull + merge on sign-in (also migrates any pre-login local data up) -----
+  async function cloudPullMerge(){
+    if(!cloudReady()) return;
+    setSync("saving");
+    try{
+      // review words: union local + cloud, cloud/local reconciled by mergeReviewEntry
+      const rw = await sbClient.from("review_words").select("*").eq("user_id",sbUser.id);
+      if(rw.error) throw rw.error;
+      const local=loadReview(), merged={};
+      Object.keys(local).forEach(k=>{ merged[k]=local[k]; });
+      (rw.data||[]).forEach(row=>{
+        const k=row.word_key;
+        const cloud={word:row.word, misses:row.misses|0, streak:row.streak|0, lastMissed:row.last_missed||null};
+        merged[k] = merged[k] ? mergeReviewEntry(merged[k],cloud) : cloud;
+      });
+      try{ localStorage.setItem(REVIEW_KEY, JSON.stringify(merged)); }catch(e){}
+      renderReview();
+
+      // sessions: pull cloud, migrate local-only rows up, show merged history
+      const cs = await sbClient.from("sessions").select("*").eq("user_id",sbUser.id)
+                    .order("played_at",{ascending:false}).limit(300);
+      if(cs.error) throw cs.error;
+      const localH=loadHistory();
+      const cloudH=(cs.data||[]).map(r=>({date:r.played_at, mode:r.mode, correct:r.correct,
+                    total:r.total, accuracy:r.accuracy, wrong:(r.total||0)-(r.correct||0)}));
+      const cloudTimes=new Set(cloudH.map(e=>tstamp(e.date)));
+      const toUpload=localH.filter(e=> e.date && !cloudTimes.has(tstamp(e.date)));
+      if(toUpload.length){
+        await sbClient.from("sessions").insert(toUpload.map(e=>({
+          user_id:sbUser.id, played_at:e.date, mode:e.mode,
+          correct:e.correct, total:e.total, accuracy:e.accuracy })));
+      }
+      const seen=new Set(), mergedH=[];
+      cloudH.concat(localH).sort((a,b)=> tstamp(b.date)-tstamp(a.date)).forEach(e=>{
+        const t=tstamp(e.date); if(seen.has(t)) return; seen.add(t); mergedH.push(e);
+      });
+      try{ localStorage.setItem(HIST_KEY, JSON.stringify(mergedH.slice(0,50))); }catch(e){}
+      renderHistory();
+
+      cloudPushReview(merged);   // reconcile cloud to the merged union
+      setSync("ok");
+    }catch(err){ setSync("err"); }
+  }
+
+  // pull the latest review_words from cloud and merge into local (no push) — for tab open
+  async function cloudRefreshReview(){
+    if(!cloudReady()) return;
+    setSync("saving");
+    try{
+      const rw = await sbClient.from("review_words").select("*").eq("user_id",sbUser.id);
+      if(rw.error) throw rw.error;
+      const local=loadReview(), merged={};
+      Object.keys(local).forEach(k=>{ merged[k]=local[k]; });
+      (rw.data||[]).forEach(row=>{
+        const k=row.word_key;
+        const cloud={word:row.word, misses:row.misses|0, streak:row.streak|0, lastMissed:row.last_missed||null};
+        merged[k] = merged[k] ? mergeReviewEntry(merged[k],cloud) : cloud;
+      });
+      try{ localStorage.setItem(REVIEW_KEY, JSON.stringify(merged)); }catch(e){}
+      renderReview();
+      setSync("ok");
+    }catch(e){ setSync("err"); }
+  }
+
+  // ----- auth UI -----
+  function applyAuth(user){
+    const prev = sbUser && sbUser.id;
+    sbUser = user || null;
+    if(sbUser){
+      acForm.hidden=true; acSignOut.hidden=false;
+      acText.textContent = "Signed in as "+(sbUser.email||"you")+" — your words & history sync across your devices.";
+      if(sbUser.id!==prev) cloudPullMerge();
+    }else{
+      acForm.hidden=false; acSignOut.hidden=true;
+      acText.textContent = "Sign in to save your words & history to the cloud, so you can pick up on any device.";
+      setSync("");
+    }
+  }
+
+  async function initCloud(){
+    account.hidden=false;
+    if(!sbClient){
+      acForm.hidden=true; acSignOut.hidden=true;
+      acText.textContent = location.protocol==="file:"
+        ? "Open this app from its web address (not as a local file) to sign in and sync. It still works here and saves on this device."
+        : "Cloud sync is unavailable right now — the app still works and saves on this device.";
+      return;
+    }
+    acForm.addEventListener("submit", async (e)=>{
+      e.preventDefault();
+      const email=(acEmail.value||"").trim();
+      if(!email) return;
+      acSignIn.disabled=true; setSyncText("Sending…","");
+      try{
+        const { error } = await sbClient.auth.signInWithOtp({ email,
+          options:{ emailRedirectTo: location.href.split("#")[0] } });
+        if(error) throw error;
+        acText.textContent = "Check your email — tap the link we sent to "+email+" to finish signing in.";
+        setSyncText("Link sent ✓","ok");
+      }catch(err){ setSyncText("Couldn't send — "+((err&&err.message)||"try again"),"err"); }
+      finally{ acSignIn.disabled=false; }
+    });
+    acSignOut.addEventListener("click", async ()=>{ try{ await sbClient.auth.signOut(); }catch(e){} });
+    try{
+      const { data:{ session } } = await sbClient.auth.getSession();
+      applyAuth(session ? session.user : null);
+    }catch(e){ applyAuth(null); }
+    sbClient.auth.onAuthStateChange((_evt, sess)=>{ applyAuth(sess ? sess.user : null); });
+  }
+
   refreshCount();
+  renderReview();   // populate the Words Retry list + badge from local storage on load
+  initCloud();
 })();
 </script>
 </body>
